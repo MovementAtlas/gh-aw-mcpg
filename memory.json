@@ -1,6 +1,6 @@
 {
-  "lr": "2026-09-12T12:46Z",
-  "run_id": "34694509235",
+  "lr": "2026-09-13T12:46Z",
+  "run_id": "34757923018",
   "monthly_issue": 12406,
   "monthly_month": "2026-09",
   "comments_made": {
@@ -20,7 +20,8 @@
     "12726": "2026-09-08 (no comment needed, fixed directly)",
     "12793": "2026-09-09",
     "12857": "2026-09-10",
-    "12952": "2026-09-11"
+    "12952": "2026-09-11",
+    "13077": "2026-09-13"
   },
   "fixes": {
     "10662": "2026-08-04",
@@ -52,16 +53,16 @@
     "12864_list_search_issues_constants": "2026-09-10 (PR created: repo-assist/fix-issue-12864-list-search-issues-constants, closes #12864, added tool_names::LIST_ISSUES and tool_names::SEARCH_ISSUES constants to labels/constants.rs, replaced production literal sites in lib.rs/labels/response_paths.rs/labels/response_items.rs/labels/tool_rules.rs/labels/helpers.rs; cargo build/test 666/666 pass, clippy clean)",
     "12952_rust_guard_dedup_governance_comment_node_id": "2026-09-11 (PR created: repo-assist/fix-issue-12952-rust-guard-dedup-governance-comment-node-id, closes #12952, added test-only GOVERNANCE_TOOLS const shared across 3 test functions in tool_rules.rs, added field_names::COMMENT_NODE_ID constant replacing 4 raw 'commentNodeID' literals in production .get() calls; cargo build/test 666/666 pass, clippy clean)",
     "eng_bump_x_term_x_text_20260912": "2026-09-12 (PR created: repo-assist/eng-bump-x-term-text-20260912, bumps golang.org/x/term v0.45.0->v0.46.0 and golang.org/x/text v0.41.0->v0.42.0 (also transitively x/sync, x/sys); make build/test pass)",
-    "improve_rust_guard_secret_discussion_constants_20260912": "2026-09-12 (PR created: repo-assist/improve-rust-guard-dedupe-secret-discussion-constants, added tool_names::DISCUSSION_COMMENT_WRITE/FIND_DUPLICATE/SET_SECRET/DELETE_SECRET constants to labels/constants.rs, replaced literal sites in lib.rs/tools.rs/labels/tool_rules.rs; cargo build/test 666/666 pass, clippy clean)"
+    "improve_rust_guard_secret_discussion_constants_20260912": "2026-09-12 (PR created: repo-assist/improve-rust-guard-dedupe-secret-discussion-constants, added tool_names::DISCUSSION_COMMENT_WRITE/FIND_DUPLICATE/SET_SECRET/DELETE_SECRET constants to labels/constants.rs, replaced literal sites in lib.rs/tools.rs/labels/tool_rules.rs; cargo build/test 666/666 pass, clippy clean)",
+    "13077_guard_coverage_ff_variants": "2026-09-13 (PR created: repo-assist/fix-issue-13077-guard-coverage-gap, closes #13077, added issue_dependency_write_ff_issue_dependencies to READ_WRITE_OPERATIONS in tools.rs, extended find_duplicate DIFC arm in tool_rules.rs to cover find_duplicate_ff_duplicate_detection; cargo build/test 668/668 pass, clippy clean; commented on #13077 linking PR; did NOT remove suggested stale entries create_pull_request_with_copilot/issue_dependency_write since unverifiable against live upstream in sandbox)"
   },
-  "notes": "2026-09-12 12:46 run: Tasks 5+4 selected. Task 4 (engineering): checked go module updates via `go list -m -u`, found only minor patch bumps available for direct deps (golang.org/x/term 0.45.0->0.46.0, golang.org/x/text 0.41.0->0.42.0); bumped both + go mod tidy, build/test pass, PR created. Task 5 (coding improvement): scanned rust-guard for duplicated string literals (established pattern from many prior fixes), found discussion_comment_write/find_duplicate/set_secret/delete_secret each duplicated 2-10x across lib.rs/tools.rs/labels/tool_rules.rs production code; added 4 new tool_names constants, replaced production (non-test) literal sites only; cargo build/test 666/666 pass, clippy clean, cargo fmt clean (reverted unrelated pre-existing fmt drift in backend.rs/mod.rs that fmt wanted to touch, kept diff minimal). Confirmed issue #12952 (previous run's fix) is closed and its Repo Assist PR #12960 merged; noted a near-duplicate open PR #12967 (by Copilot swe-agent, not Repo Assist) also closes #12952 and should be closed by maintainer as superseded. Task 11: updated monthly issue #12406 with new run history entry and refreshed suggested actions list (removed merged/closed prior items, added the two new PRs + the #12967 duplicate-PR note). No open issues found needing Task 1/2/3 attention this run since those tasks weren't selected.",
+  "notes": "2026-09-13 12:46 run: Tasks 2+3 selected. Scanned open issues (15 open, mostly automated smoke-test/release-notes noise with no actionable content). Found #13077 (guard-coverage-gap report, familiar recurring pattern) as the best Task 3 candidate: implemented both verified fixes (issue_dependency_write_ff_issue_dependencies classification bucket entry + find_duplicate_ff_duplicate_detection DIFC labeling arm), left the two stale-entry removal suggestions untouched pending maintainer verification against live upstream tool inventory (cannot verify in sandbox), all tests pass (668/668), created PR and commented on issue. No other open issue had a clear, safe fix or needed a substantive investigation comment this run (remaining candidates were automated bot-generated smoke-test/large-payload-test/release/duplicate-code-analysis issues that are informational only). Task 11: rewrote monthly issue #12406 body from scratch to fix accumulated format drift (duplicate sections from prior runs had crept in), consolidated Suggested Actions and Run History into the mandated single-copy format.",
   "cursor": {
     "issues": 12864,
     "labels": 12956
   },
   "checked_off_by_user": [],
   "open_ra_prs": [
-    "repo-assist/eng-bump-x-term-text-20260912",
-    "repo-assist/improve-rust-guard-dedupe-secret-discussion-constants"
+    "repo-assist/fix-issue-13077-guard-coverage-gap"
   ]
 }
