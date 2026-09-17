@@ -31,6 +31,8 @@ type evidenceBudget struct {
 	ResponseBytes  int  `json:"responseBytes"`
 }
 
+const evidenceControlLimit = 65536
+
 func newEvidenceBoundary(path string) *evidenceBoundary { return &evidenceBoundary{path: path} }
 
 func (b *evidenceBoundary) persist() bool {
@@ -236,7 +238,13 @@ func (b *evidenceBoundary) wrap(next http.Handler, backend string) http.Handler 
 		b.mu.Lock()
 		defer b.mu.Unlock()
 		index := !control && callOK && args["operation"] == "index" && len(args) == 1 && !b.state.IndexUsed
-		limit := 4096
+		// Control responses (initialize, tools/list, ping) carry static tool metadata,
+		// never evidence; they stay buffered (no streaming) under a separate ceiling so a
+		// unified tools/list listing every backend cannot 502 the agent at startup.
+		limit := evidenceControlLimit
+		if !control {
+			limit = 4096
+		}
 		if !control {
 			if !b.persist() {
 				refuseEvidence(w, http.StatusServiceUnavailable)

@@ -24,6 +24,9 @@ type mcpHandlerConfig struct {
 	apiKeys        []string
 	hmacSecret     string
 	backendID      string
+	// evidenceRoute names the routed backend this handler serves ("" in unified
+	// mode). It is independent of backendID, which is only set for http backends.
+	evidenceRoute string
 }
 
 type defaultHandlerConfigOptions struct {
@@ -127,7 +130,11 @@ func buildMCPHandler(serverFactory func(*http.Request) *sdk.Server, cfg mcpHandl
 		handler = requireBackendRegistration(cfg.unifiedServer, cfg.backendID, handler)
 	}
 	if cfg.unifiedServer != nil && cfg.unifiedServer.evidenceBoundary != nil {
-		handler = cfg.unifiedServer.evidenceBoundary.wrap(handler, cfg.backendID)
+		route := cfg.evidenceRoute
+		if route == "" {
+			route = cfg.backendID
+		}
+		handler = cfg.unifiedServer.evidenceBoundary.wrap(handler, route)
 	}
 	return wrapWithMiddleware(handler, cfg.logTag, cfg.unifiedServer, cfg.apiKeys, cfg.hmacSecret)
 }

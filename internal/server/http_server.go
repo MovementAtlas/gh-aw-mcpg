@@ -133,6 +133,7 @@ func CreateHTTPServerForRoutedMode(addr string, unifiedServer *UnifiedServer, ap
 				apiKeys:    apiKeys,
 				hmacSecret: hmacSecret,
 			})
+			handlerCfg.evidenceRoute = backendID
 			if serverCfg := unifiedServer.cfg.Servers[backendID]; serverCfg != nil && serverCfg.Type == "http" {
 				handlerCfg.backendID = backendID
 			}

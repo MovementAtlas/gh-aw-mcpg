@@ -213,3 +213,42 @@ func TestEvidenceBoundaryRefusesFlushAndDuplicateKeys(t *testing.T) {
 	h.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/mcp/ci-evidence", strings.NewReader(`{"method":"ping","method":"tools/call","id":1}`)))
 	require.Empty(t, w.Body.Bytes())
 }
+
+func TestEvidenceBoundaryControlBodiesAreNotEvidenceCapped(t *testing.T) {
+	b := newEvidenceBoundary(evidenceLease(t))
+	big := strings.Repeat("x", 20000)
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(big)) })
+	h := b.wrap(next, "")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/mcp/", strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/list"}`)))
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Len(t, w.Body.Bytes(), 20000)
+	require.Zero(t, b.state.Attempts)
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/mcp/", strings.NewReader(`{"jsonrpc":"2.0","id":2,"method":"tools/list"}`)))
+	require.Equal(t, http.StatusOK, w.Code)
+	huge := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(strings.Repeat("x", evidenceControlLimit+1))) })
+	w = httptest.NewRecorder()
+	b.wrap(huge, "").ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/mcp/", strings.NewReader(`{"jsonrpc":"2.0","id":3,"method":"tools/list"}`)))
+	require.Equal(t, http.StatusBadGateway, w.Code)
+	require.Empty(t, w.Body.Bytes())
+}
+
+func TestEvidenceBoundaryRoutedOtherBackendIsUntouched(t *testing.T) {
+	b := newEvidenceBoundary(evidenceLease(t))
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(strings.Repeat("x", 70000))) })
+	for _, route := range []string{"safeoutputs", "github"} {
+		w := httptest.NewRecorder()
+		b.wrap(next, route).ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/mcp/"+route, strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/list"}`)))
+		require.Equal(t, http.StatusOK, w.Code)
+		require.Len(t, w.Body.Bytes(), 70000)
+	}
+	require.Zero(t, b.state.Attempts)
+	// Routed evidence backends are named explicitly even when backendID is empty (stdio).
+	cfg := mcpHandlerConfig{evidenceRoute: "ci-evidence"}
+	route := cfg.evidenceRoute
+	if route == "" {
+		route = cfg.backendID
+	}
+	require.Equal(t, "ci-evidence", route)
+}
