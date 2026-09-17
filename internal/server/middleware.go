@@ -126,5 +126,8 @@ func buildMCPHandler(serverFactory func(*http.Request) *sdk.Server, cfg mcpHandl
 		logServerHelpers.Printf("buildMCPHandler: requiring backend registration for backendID=%s", cfg.backendID)
 		handler = requireBackendRegistration(cfg.unifiedServer, cfg.backendID, handler)
 	}
+	if cfg.unifiedServer != nil && cfg.unifiedServer.evidenceBoundary != nil {
+		handler = cfg.unifiedServer.evidenceBoundary.wrap(handler, cfg.backendID)
+	}
 	return wrapWithMiddleware(handler, cfg.logTag, cfg.unifiedServer, cfg.apiKeys, cfg.hmacSecret)
 }

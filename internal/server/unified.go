@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -79,6 +80,7 @@ type ToolInfo struct {
 
 // UnifiedServer implements a unified MCP server that aggregates multiple backend servers
 type UnifiedServer struct {
+	evidenceBoundary     *evidenceBoundary
 	launcher             *launcher.Launcher
 	sysServer            *SysServer
 	ctx                  context.Context
@@ -184,6 +186,9 @@ func NewUnified(ctx context.Context, cfg *config.Config) (*UnifiedServer, error)
 
 		// Cache tracer at construction to avoid calling otel.Tracer on every request.
 		CachedTracer: tracing.CachedTracer{Tracer: tracing.Tracer()},
+	}
+	if _, enabled := cfg.Servers["ci-evidence"]; enabled {
+		us.evidenceBoundary = newEvidenceBoundary(os.Getenv("MA_CI_EVIDENCE_LEASE"))
 	}
 	for serverID := range cfg.Servers {
 		us.backendRegistration[serverID] = &sync.Mutex{}
