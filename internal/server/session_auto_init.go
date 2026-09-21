@@ -27,9 +27,15 @@ const mcpProtocolVersionHeader = "Mcp-Protocol-Version"
 // not treat these requests as missing a legacy handshake.
 const statelessProtocolVersion = "2026-07-28"
 
+// discoverMethod is the SEP-2575 sessionless bootstrap RPC. A stateful handler
+// cannot serve the protocol it bootstraps, so the wrapper refuses it (see below).
+const discoverMethod = "server/discover"
+
 // WrapWithSessionAutoInit wraps an MCP streamable HTTP handler to automatically
 // initialize sessions for clients that send tools/call before completing the MCP
-// session handshake.
+// session handshake, and to refuse the sessionless server/discover bootstrap so
+// SEP-2575 clients fall back to the legacy initialize handshake that the
+// stateful handler actually supports.
 //
 // This addresses a known compatibility issue with Gemini CLI v0.37.x, which calls
 // tools/call before sending initialize + notifications/initialized, causing the SDK
@@ -54,6 +60,43 @@ func WrapWithSessionAutoInit(streamableHandler http.Handler) http.Handler {
 			return
 		}
 
+		// Peek at the request body to detect the JSON-RPC method.
+		bodyBytes, err := readAndRestoreRequestBody(r)
+		if err != nil || len(bodyBytes) == 0 {
+			streamableHandler.ServeHTTP(w, r)
+			return
+		}
+
+		var rpcReq struct {
+			Method string `json:"method"`
+		}
+		if err := json.Unmarshal(bodyBytes, &rpcReq); err != nil {
+			streamableHandler.ServeHTTP(w, r)
+			return
+		}
+
+		// The wrapped handler is stateful (see buildMCPHandler), so it can
+		// never serve the sessionless >= 2026-07-28 protocol. The SDK still
+		// answers server/discover with 200 (advertising only legacy versions)
+		// and no Mcp-Session-Id; a SEP-2575 client then treats the server as
+		// initialized and sends sessionless tools/list carrying
+		// _meta.protocolVersion, which the stateful handler rejects with
+		// JSON-RPC -32022 ("protocol version ... is not supported"), leaving
+		// the catalog empty. That rejection keys off the per-request _meta,
+		// not the missing session, so auto-init cannot repair it afterwards.
+		// Refuse discover up front instead: per SEP-2575 the client falls
+		// back to the legacy initialize handshake, which yields a session
+		// (this is the path the ci-evidence route already takes because its
+		// evidence boundary refuses server/discover with 400).
+		if rpcReq.Method == discoverMethod {
+			logAutoInit.Printf("server/discover without Mcp-Session-Id on stateful handler, refusing so client falls back to initialize")
+			logger.LogWarn("client",
+				"server/discover received on stateful endpoint without session; "+
+					"replying 400 so the client falls back to the legacy initialize handshake")
+			http.Error(w, "Bad Request: server/discover is not supported on this stateful endpoint; use the initialize handshake", http.StatusBadRequest)
+			return
+		}
+
 		// SDK v1.7.0+ defaults to the stateless "2026-07-28" protocol, under
 		// which requests intentionally omit Mcp-Session-Id (see SEP-2577).
 		// Auto-init only targets legacy stateful clients (e.g. Gemini CLI
@@ -65,17 +108,7 @@ func WrapWithSessionAutoInit(streamableHandler http.Handler) http.Handler {
 			return
 		}
 
-		// Peek at the request body to detect tools/call.
-		bodyBytes, err := readAndRestoreRequestBody(r)
-		if err != nil || len(bodyBytes) == 0 {
-			streamableHandler.ServeHTTP(w, r)
-			return
-		}
-
-		var rpcReq struct {
-			Method string `json:"method"`
-		}
-		if err := json.Unmarshal(bodyBytes, &rpcReq); err != nil || rpcReq.Method != "tools/call" {
+		if rpcReq.Method != "tools/call" {
 			streamableHandler.ServeHTTP(w, r)
 			return
 		}
